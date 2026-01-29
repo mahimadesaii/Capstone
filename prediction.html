@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AQI Prediction</title>
+    <script src="data.js"></script>
+    <style>
+        body{margin:0;font-family:Segoe UI;background:#eef3f9;}
+        header{background:linear-gradient(90deg,#1e90ff,#00b4d8);color:white;padding:25px;text-align:center;}
+        nav{background:#023e8a;display:flex;justify-content:center;}
+        nav a{color:white;padding:14px 22px;text-decoration:none;}
+        nav a:hover{background:#0077b6;}
+        .container{padding:30px;}
+        
+        .card{background:white;padding:30px;border-radius:12px;box-shadow:0 6px 12px rgba(0,0,0,.1);text-align:center;max-width:600px;margin:0 auto;}
+        
+        select{padding:12px; width:100%; margin-bottom:20px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px;}
+        button{background:#1e90ff;color:white;padding:14px 30px;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight: bold;transition: 0.3s;}
+        button:hover{background: #023e8a;}
+
+        /* Decorative Result Area */
+        #resContainer {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none; 
+            transition: all 0.5s ease;
+            border: 2px solid transparent;
+        }
+        .res-label { font-size: 1.1em; margin-bottom: 10px; display: block; }
+        .res-value { font-size: 3.5em; font-weight: bold; display: block; line-height: 1; }
+        .res-bucket { font-size: 1.4em; font-weight: bold; margin-top: 10px; display: block; }
+        .res-date { font-size: 0.9em; margin-top: 15px; opacity: 0.8; display: block; }
+    </style>
+</head>
+<body>
+    <header><h1>AQI Prediction</h1></header>
+    <nav>
+        <a href="index.html">Data</a>
+        <a href="insights.html">Insights</a>
+        <a href="prediction.html">Prediction</a>
+        <a href="precaution.html">Precautions</a>
+    </nav>
+    <div class="container">
+        <div class="card">
+            <h2 style="color: #023e8a;">Forecast Next Day AQI</h2>
+            <p style="color: #666; margin-bottom: 25px;">Select a city to estimate tomorrow's air quality based on historical trends.</p>
+            
+            <select id="citySelect">
+                <option value="">-- Select a City --</option>
+            </select><br>
+            
+            <button onclick="predict()">Calculate Forecast</button>
+            
+            <div id="resContainer">
+                <span class="res-label">Estimated AQI for Tomorrow</span>
+                <span id="resVal" class="res-value">0</span>
+                <span id="resBucket" class="res-bucket">Unknown</span>
+                <span id="resDate" class="res-date"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cities = [...new Set(aqiData.map(d => d.City))].sort();
+        const select = document.getElementById('citySelect');
+        const resContainer = document.getElementById('resContainer');
+        const resVal = document.getElementById('resVal');
+        const resBucket = document.getElementById('resBucket');
+        const resDate = document.getElementById('resDate');
+
+        // Populate dropdown
+        cities.forEach(c => {
+            let opt = document.createElement('option');
+            opt.value = opt.innerText = c;
+            select.appendChild(opt);
+        });
+
+        // Function to determine color and bucket name (helper for your logic)
+        function getHealthInfo(aqi) {
+            if (aqi <= 50) return { name: "Good", color: "#2ecc71", text: "#fff" };
+            if (aqi <= 100) return { name: "Satisfactory", color: "#f1c40f", text: "#000" };
+            if (aqi <= 200) return { name: "Moderate", color: "#e67e22", text: "#fff" };
+            if (aqi <= 300) return { name: "Poor", color: "#e74c3c", text: "#fff" };
+            if (aqi <= 400) return { name: "Very Poor", color: "#9b59b6", text: "#fff" };
+            return { name: "Severe", color: "#7f2b2b", text: "#fff" };
+        }
+
+        // --- BLANK FUNCTION FOR YOUR IMPLEMENTATION ---
+        function predict() {
+            // Your logic goes here
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Insights</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="data.js"></script>
+    <style>
+        body{margin:0;font-family:Segoe UI;background:#eef3f9;}
+        header{background:linear-gradient(90deg,#1e90ff,#00b4d8);color:white;padding:25px;text-align:center;}
+        nav{background:#023e8a;display:flex;justify-content:center;}
+        nav a{color:white;padding:14px 22px;text-decoration:none;}
+        nav a:hover{background:#0077b6;}
+        .container{padding:30px;}
+        .card{background:white;padding:30px;border-radius:12px;box-shadow:0 6px 12px rgba(0,0,0,.1); text-align: center;}
+        
+        .controls { display: flex; gap: 20px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; }
+        select { padding: 12px; width: 300px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; cursor: pointer;}
+
+        #chartWrapper {
+            max-width: 950px; 
+            margin: 0 auto;   
+            position: relative;
+            background: #fff;
+            padding: 10px;
+        }
+
+        #noDataMessage { padding: 80px; color: #888; font-style: italic; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+    <header><h1>AQI Insights & Trends</h1></header>
+    <nav>
+        <a href="index.html">Data</a>
+        <a href="insights.html">Insights</a>
+        <a href="prediction.html">Prediction</a>
+        <a href="precaution.html">Precautions</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2 style="color: #023e8a;">AQI Historical Analysis</h2>
+            
+            <div class="controls">
+                <select id="citySelect" onchange="drawChart()">
+                    <option value="">-- Select a City --</option>
+                </select>
+
+                <select id="timeScale" onchange="drawChart()">
+                    <option value="">-- Select Time Scale --</option>
+                    <option value="daily">Last 30 Records (Daily)</option>
+                    <option value="monthly">Month-wise Average</option>
+                    <option value="yearly">Year-wise Average</option>
+                </select>
+            </div>
+            
+            <div id="chartWrapper">
+                <canvas id="aqiChart"></canvas>
+                <div id="noDataMessage">Please select both a city and a time scale to visualize the trend.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const cities = [...new Set(aqiData.map(d => d.City))].sort();
+        const citySelect = document.getElementById('citySelect');
+        const timeScale = document.getElementById('timeScale');
+        const noDataMessage = document.getElementById('noDataMessage');
+        const chartCanvas = document.getElementById('aqiChart');
+
+        chartCanvas.style.display = 'none';
+
+        cities.forEach(c => {
+            let opt = document.createElement('option');
+            opt.value = opt.innerText = c;
+            citySelect.appendChild(opt);
+        });
+
+        function drawChart() {
+            const city = citySelect.value;
+            const scale = timeScale.value;
+
+            // Updated Condition: Wait for both city and scale selection
+            if (city === "" || scale === "") {
+                if(chart) chart.destroy();
+                chartCanvas.style.display = 'none';
+                noDataMessage.style.display = 'block';
+                return;
+            }
+
+            chartCanvas.style.display = 'block';
+            noDataMessage.style.display = 'none';
+
+            let filteredData = aqiData.filter(d => d.City === city);
+            let labels = [];
+            let values = [];
+
+            if (scale === 'daily') {
+                const last30 = filteredData.slice(-30);
+                labels = last30.map(d => d.Date);
+                values = last30.map(d => d.AQI);
+            } 
+            else if (scale === 'monthly') {
+                const monthlyMap = {};
+                filteredData.forEach(d => {
+                    const key = `${d.Year}-${String(d.Month).padStart(2, '0')}`;
+                    if (!monthlyMap[key]) monthlyMap[key] = { sum: 0, count: 0 };
+                    monthlyMap[key].sum += d.AQI;
+                    monthlyMap[key].count += 1;
+                });
+                
+                const sortedKeys = Object.keys(monthlyMap).sort();
+                
+                labels = sortedKeys.map(key => {
+                    const [year, monthNum] = key.split("-");
+                    return `${monthNames[parseInt(monthNum)-1]} ${year}`;
+                });
+                
+                values = sortedKeys.map(key => Math.round(monthlyMap[key].sum / monthlyMap[key].count));
+            } 
+            else if (scale === 'yearly') {
+                const yearlyMap = {};
+                filteredData.forEach(d => {
+                    const key = d.Year;
+                    if (!yearlyMap[key]) yearlyMap[key] = { sum: 0, count: 0 };
+                    yearlyMap[key].sum += d.AQI;
+                    yearlyMap[key].count += 1;
+                });
+                labels = Object.keys(yearlyMap).sort();
+                values = labels.map(key => Math.round(yearlyMap[key].sum / yearlyMap[key].count));
+            }
+
+            if(chart) chart.destroy();
+            
+            chart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{ 
+                        label: `${scale.toUpperCase()} AQI Average: ${city}`, 
+                        data: values, 
+                        borderColor: '#1e90ff', 
+                        borderWidth: 3,
+                        backgroundColor: 'rgba(30, 144, 255, 0.15)',
+                        fill: true,
+                        pointRadius: 5,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(2, 62, 138, 0.9)',
+                            callbacks: {
+                                label: function(context) { return ` Avg AQI: ${context.parsed.y}`; }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { title: { display: true, text: 'AQI Value' } },
+                        x: { title: { display: true, text: 'Time Period' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

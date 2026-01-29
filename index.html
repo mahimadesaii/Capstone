@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AQI Dashboard</title>
+    <script src="data.js"></script> 
+    <style>
+        body{margin:0;font-family:Segoe UI;background:#eef3f9;}
+        header{background:linear-gradient(90deg,#1e90ff,#00b4d8);color:white;padding:25px;text-align:center;}
+        nav{background:#023e8a;display:flex;justify-content:center;}
+        nav a{color:white;padding:14px 22px;text-decoration:none;}
+        nav a:hover{background:#0077b6;}
+        .container{padding:30px; min-height: 100vh;}
+        .card{background:white;padding:25px;border-radius:12px;box-shadow:0 6px 12px rgba(0,0,0,.1);margin-bottom:25px;}
+
+        /* Search Controls */
+        .search-controls { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
+        .search-group { flex: 1; min-width: 200px; position: relative; }
+        .dropdown-wrapper { position: relative; width: 100%; }
+        .combo-input { width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; background: white; }
+        .dropdown-arrow { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 7px solid #555; pointer-events: none; }
+        
+        /* Search Button Style */
+        .search-btn {
+            background: #1e90ff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            height: 45px;
+        }
+        .search-btn:hover { background: #023e8a; }
+
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 250px; overflow-y: auto; z-index: 9999; display: none; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .dropdown-list li { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f8f8f8; }
+        .dropdown-list li:hover { background-color: #1e90ff; color: white; }
+
+        /* Results Layout */
+        .aqi-highlight-row { display: flex; gap: 15px; margin-bottom: 25px; }
+        .aqi-box { flex: 1; padding: 20px; border-radius: 8px; color: white; text-align: center; }
+        .category-box { flex: 1; padding: 20px; border-radius: 8px; background: #f0f4f8; border: 1px solid #d1d9e0; text-align: center; color: #023e8a; }
+        
+        .section-heading { color: #023e8a; border-bottom: 2px solid #eef3f9; padding-bottom: 8px; margin: 20px 0 15px 0; font-size: 1.1em; }
+        .pollutant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .stat-card { background: #f8fbff; padding: 12px; border-radius: 8px; border-left: 4px solid #1e90ff; }
+        
+        .val { font-size: 1.6em; font-weight: bold; display: block; margin-top: 5px; }
+        .full-form { font-size: 0.75em; color: #666; display: block; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+<header><h1>Air Quality Monitoring System</h1></header>
+<nav>
+    <a href="index.html">Data</a>
+    <a href="insights.html">Insights</a>
+    <a href="prediction.html">Prediction</a>
+    <a href="precaution.html">Precautions</a>
+</nav>
+
+<div class="container">
+    <section class="card">
+        <h2>Explore Air Quality</h2>
+        
+        <div class="search-controls">
+            <div class="search-group">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Search City</label>
+                <div class="dropdown-wrapper">
+                    <input type="text" id="citySearch" class="combo-input" placeholder="Search City..." autocomplete="off" onclick="toggleDropdown()" oninput="filterDropdown()">
+                    <div class="dropdown-arrow"></div>
+                    <ul id="cityMenu" class="dropdown-list"></ul>
+                </div>
+            </div>
+
+            <div class="search-group">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Select Date</label>
+                <input type="date" id="dateSearch" class="combo-input">
+            </div>
+
+            <button class="search-btn" onclick="updateView()">Search Data</button>
+        </div>
+
+        <div id="result"></div>
+    </section>
+</div>
+
+
+
+<script>
+    const cities = [...new Set(aqiData.map(d => d.City))].sort();
+    const cityInput = document.getElementById('citySearch');
+    const dateInput = document.getElementById('dateSearch');
+    const menu = document.getElementById('cityMenu');
+
+    function buildMenu(filter = '') {
+        menu.innerHTML = '';
+        const filtered = cities.filter(c => c.toLowerCase().includes(filter.toLowerCase()));
+        filtered.forEach(city => {
+            const li = document.createElement('li');
+            li.innerText = city;
+            li.onclick = () => selectCity(city);
+            menu.appendChild(li);
+        });
+    }
+
+    function toggleDropdown() { menu.style.display = (menu.style.display === 'block') ? 'none' : 'block'; buildMenu(cityInput.value); }
+    function filterDropdown() { menu.style.display = 'block'; buildMenu(cityInput.value); }
+    
+    // Updated: selectCity no longer automatically calls updateView
+    function selectCity(name) { 
+        cityInput.value = name; 
+        menu.style.display = 'none'; 
+    }
+
+    // Triggered by the Search Button
+    function updateView() { 
+        const cityName = cityInput.value;
+        const targetDate = dateInput.value;
+
+        if (!cityName) {
+            alert("Please select a city first!");
+            return;
+        }
+        displayData(cityName, targetDate); 
+    }
+
+    window.addEventListener('click', (e) => { if (!e.target.closest('.dropdown-wrapper')) menu.style.display = 'none'; });
+
+    function getAqiColor(aqi) {
+        if (!aqi) return '#999';
+        if (aqi <= 50) return '#2ecc71'; 
+        if (aqi <= 100) return '#f1c40f'; 
+        if (aqi <= 200) return '#e67e22'; 
+        if (aqi <= 300) return '#e74c3c'; 
+        if (aqi <= 400) return '#9b59b6'; 
+        return '#7f2b2b'; 
+    }
+
+    function displayData(cityName, targetDate) {
+        const cityData = aqiData.filter(d => d.City === cityName);
+        let record = targetDate ? cityData.find(d => d.Date === targetDate) : cityData[cityData.length - 1];
+
+        if (!record) {
+            document.getElementById('result').innerHTML = `<p style="color:red; text-align:center; padding:20px;">No records for ${cityName} on this date.</p>`;
+            return;
+        }
+
+        const aqiColor = getAqiColor(record.AQI);
+
+        document.getElementById('result').innerHTML = `
+            <div style="margin-top:25px; border-top:1px solid #eee; padding-top:20px;">
+                <h3 style="margin-bottom:15px;">City: ${cityName} <small style="color:#666; float:right;">Date: ${record.Date}</small></h3>
+                
+                <h4 class="section-heading">Overall Summary:</h4>
+                <div class="aqi-highlight-row">
+                    <div class="aqi-box" style="background:${aqiColor};">
+                        <strong>AQI (Air Quality Index)</strong>
+                        <span class="val">${record.AQI || 'N/A'}</span>
+                    </div>
+                    <div class="category-box">
+                        <strong>Category</strong>
+                        <span class="val" style="color:${aqiColor}">${record['AQI Bucket'] || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <h4 class="section-heading">Detailed Pollutant Components:</h4>
+                <div class="pollutant-grid">
+                    <div class="stat-card">
+                        <strong>PM2.5</strong>
+                        <span class="full-form">Particulate Matter 2.5</span>
+                        <span class="val">${record['PM2.5'] || 'N/A'}</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>PM10</strong>
+                        <span class="full-form">Particulate Matter 10</span>
+                        <span class="val">${record.PM10 || 'N/A'}</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>NO2</strong>
+                        <span class="full-form">Nitrogen Dioxide</span>
+                        <span class="val">${record.NO2 || 'N/A'}</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>O3</strong>
+                        <span class="full-form">Ozone</span>
+                        <span class="val">${record.O3 || 'N/A'}</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>CO</strong>
+                        <span class="full-form">Carbon Monoxide</span>
+                        <span class="val">${record.CO || 'N/A'}</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>SO2</strong>
+                        <span class="full-form">Sulphur Dioxide</span>
+                        <span class="val">${record.SO2 || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    buildMenu();
+</script>
+
+</body>
+</html>

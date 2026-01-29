@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Health Precautions</title>
+    <script src="data.js"></script> 
+    <style>
+        body{margin:0;font-family:Segoe UI;background:#eef3f9;}
+        header{background:linear-gradient(90deg,#1e90ff,#00b4d8);color:white;padding:25px;text-align:center;}
+        nav{background:#023e8a;display:flex;justify-content:center;}
+        nav a{color:white;padding:14px 22px;text-decoration:none;}
+        nav a:hover{background:#0077b6;}
+        .container{padding:30px; min-height: 100vh;}
+        .card{background:white;padding:25px;border-radius:12px;box-shadow:0 6px 12px rgba(0,0,0,.1);margin-bottom:25px;}
+
+        /* Search Controls */
+        .search-group { position: relative; max-width: 500px; margin: 0 auto 20px auto; }
+        .combo-input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; background: white; }
+        .dropdown-arrow { position: absolute; right: 12px; top: 42px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 7px solid #555; pointer-events: none; }
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 250px; overflow-y: auto; z-index: 9999; display: none; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .dropdown-list li { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f8f8f8; text-align: left; }
+        .dropdown-list li:hover { background-color: #1e90ff; color: white; }
+
+        /* AQI Summary Layout */
+        .aqi-highlight-row { display: flex; gap: 15px; margin-bottom: 25px; }
+        .aqi-box { flex: 1; padding: 20px; border-radius: 8px; color: white; text-align: center; }
+        .category-box { flex: 1; padding: 20px; border-radius: 8px; background: #f0f4f8; border: 1px solid #d1d9e0; text-align: center; color: #023e8a; }
+        .val { font-size: 1.8em; font-weight: bold; display: block; margin-top: 5px; }
+
+        /* Advice Section */
+        .precaution-card { background: #fffbe6; border-left: 6px solid #f1c40f; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;}
+        .precaution-card h4 { margin-top: 0; color: #856404; }
+        .precaution-list { padding-left: 20px; line-height: 1.8; color: #555; }
+        .precaution-list li { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<header><h1>Health Precautions & Advice</h1></header>
+<nav>
+    <a href="index.html">Data</a>
+    <a href="insights.html">Insights</a>
+    <a href="prediction.html">Prediction</a>
+    <a href="precaution.html">Precautions</a>
+</nav>
+
+<div class="container">
+    <section class="card" style="text-align: center;">
+        <h2>Current Health Advice</h2>
+        <p>Select your city to see the most recent safety measures you should take.</p>
+        
+        <div class="search-group">
+            <label style="display:block; margin-bottom:5px; font-weight:bold; text-align: left;">Search City</label>
+            <div class="dropdown-wrapper">
+                <input type="text" id="citySearch" class="combo-input" placeholder="Start typing city name..." autocomplete="off" onclick="toggleDropdown()" oninput="filterDropdown()">
+                <div class="dropdown-arrow"></div>
+                <ul id="cityMenu" class="dropdown-list"></ul>
+            </div>
+        </div>
+
+        <div id="result"></div>
+    </section>
+</div>
+
+
+
+<script>
+    const cities = [...new Set(aqiData.map(d => d.City))].sort();
+    const cityInput = document.getElementById('citySearch');
+    const menu = document.getElementById('cityMenu');
+
+    function buildMenu(filter = '') {
+        menu.innerHTML = '';
+        const filtered = cities.filter(c => c.toLowerCase().includes(filter.toLowerCase()));
+        filtered.forEach(city => {
+            const li = document.createElement('li');
+            li.innerText = city;
+            li.onclick = () => selectCity(city);
+            menu.appendChild(li);
+        });
+    }
+
+    function toggleDropdown() { menu.style.display = (menu.style.display === 'block') ? 'none' : 'block'; buildMenu(cityInput.value); }
+    function filterDropdown() { menu.style.display = 'block'; buildMenu(cityInput.value); }
+    
+    function selectCity(name) { 
+        cityInput.value = name; 
+        menu.style.display = 'none'; 
+        displayPrecaution(name); 
+    }
+
+    window.addEventListener('click', (e) => { if (!e.target.closest('.search-group')) menu.style.display = 'none'; });
+
+    function getPrecautionData(aqi) {
+        if (!aqi) return null;
+        if (aqi <= 50) return {
+            color: '#2ecc71', border: '#27ae60', bg: '#eafaf1',
+            title: "Safe - No Precautions Needed",
+            tips: ["Air quality is ideal for outdoor activities.", "Open windows to let in fresh air.", "Enjoy your usual outdoor exercises."]
+        };
+        if (aqi <= 100) return {
+            color: '#f1c40f', border: '#f39c12', bg: '#fef9e7',
+            title: "Satisfactory - Minor Sensitivity",
+            tips: ["Sensitive people (asthma) should reduce heavy outdoor exertion.", "Consider closing windows if you feel respiratory irritation.", "Others can continue normal activities."]
+        };
+        if (aqi <= 200) return {
+            color: '#e67e22', border: '#d35400', bg: '#fdf2e9',
+            title: "Moderate - Use Caution",
+            tips: ["Children and elderly should limit outdoor time.", "Avoid running or heavy workouts near busy roads.", "Keep windows closed during peak traffic hours."]
+        };
+        if (aqi <= 300) return {
+            color: '#e74c3c', border: '#c0392b', bg: '#fdedec',
+            title: "Poor - Health Risk",
+            tips: ["Wear an N95 mask if going outside for long periods.", "Avoid all vigorous outdoor physical activity.", "Use air purifiers indoors if available."]
+        };
+        if (aqi <= 400) return {
+            color: '#9b59b6', border: '#8e44ad', bg: '#f5eef8',
+            title: "Very Poor - Avoid Outdoors",
+            tips: ["Stay indoors as much as possible.", "Keep all windows and doors tightly shut.", "Vulnerable groups should remain in a clean-air room."]
+        };
+        return {
+            color: '#7f2b2b', border: '#4d1a1a', bg: '#f2eded',
+            title: "Severe - Emergency Conditions",
+            tips: ["Total health alert: Avoid all outdoor movement.", "Run air purifiers on high settings.", "If you experience chest pain or breathing difficulty, seek medical help."]
+        };
+    }
+
+    function displayPrecaution(cityName) {
+        const cityData = aqiData.filter(d => d.City === cityName);
+        // Always grab the most recent record
+        let record = cityData[cityData.length - 1];
+
+        if (!record) {
+            document.getElementById('result').innerHTML = `<p style="color:red; text-align:center; padding:20px;">No data found for ${cityName}.</p>`;
+            return;
+        }
+
+        const advice = getPrecautionData(record.AQI);
+
+        document.getElementById('result').innerHTML = `
+            <div style="margin-top:25px; border-top:1px solid #eee; padding-top:20px;">
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Latest data from: <strong>${record.Date}</strong></p>
+                <div class="aqi-highlight-row">
+                    <div class="aqi-box" style="background:${advice.color};">
+                        <strong>AQI</strong>
+                        <span class="val">${record.AQI}</span>
+                    </div>
+                    <div class="category-box">
+                        <strong>Health Category</strong>
+                        <span class="val" style="color:${advice.color}">${record['AQI Bucket']}</span>
+                    </div>
+                </div>
+
+                <div class="precaution-card" style="border-left-color:${advice.color}; background-color:${advice.bg};">
+                    <h4 style="color:${advice.border};">Recommended Actions: ${advice.title}</h4>
+                    <ul class="precaution-list">
+                        ${advice.tips.map(tip => `<li>${tip}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+    buildMenu();
+</script>
+
+</body>
+</html>
