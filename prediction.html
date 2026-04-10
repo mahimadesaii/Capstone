@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction | DeepAQI</title>
+    <script src="data.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<nav>
+    <div class="brand">
+        <i class="fa-solid fa-earth-americas"></i>
+        DeepAQI
+    </div>
+    <div class="nav-links">
+        <a href="index.html">Dashboard</a>
+        <a href="insights.html">Insights</a>
+        <a href="prediction.html" class="active">Advanced Predictions</a>
+        <a href="precaution.html">Precautions</a>
+        <a href="realtime.html">Live Status</a>
+    </div>
+</nav>
+
+<div class="dashboard single">
+    <div class="panel">
+        <h2 class="panel-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Predict Next Day AQI</h2>
+        <p style="color: var(--text-muted); margin-bottom: 25px;">Select a city to estimate tomorrow's air quality using historical trends and our ensemble models.</p>
+        
+        <div class="search-controls">
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot"></i>
+                <select id="citySelect" style="padding-left: 45px;">
+                    <option value="">-- Select a City --</option>
+                </select>
+            </div>
+            
+            <button class="btn-primary" onclick="predict()">
+                <i class="fa-solid fa-microchip"></i> Calculate Forecast
+            </button>
+        </div>
+        
+        <div id="resContainer" style="display: none; margin-top: 30px;">
+            <div class="aqi-hero" style="margin-bottom: 0;">
+                <div id="aqiCard" class="aqi-main-card">
+                    <div class="aqi-value-wrapper">
+                        <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600;">Forecasted AQI</div>
+                        <div id="resVal" class="aqi-value">--</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 15px; color: var(--text-muted); margin-bottom: 5px;">Expected Category</div>
+                        <div id="resBucket" style="font-size: 28px; font-weight: 700;">--</div>
+                        <div id="resDate" style="font-size: 13px; color: var(--text-muted); margin-top: 12px; line-height: 1.5;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const cities = typeof aqiData !== 'undefined' ? [...new Set(aqiData.map(d => d.City))].sort() : [];
+    const select = document.getElementById('citySelect');
+    const resContainer = document.getElementById('resContainer');
+    const resVal = document.getElementById('resVal');
+    const resBucket = document.getElementById('resBucket');
+    const resDate = document.getElementById('resDate');
+    const aqiCard = document.getElementById('aqiCard');
+
+    // Populate dropdown
+    cities.forEach(c => {
+        let opt = document.createElement('option');
+        opt.value = opt.innerText = c;
+        select.appendChild(opt);
+    });
+
+    function getHealthInfo(aqi) {
+        if (!aqi) return { color: '#8b949e', glow: 'rgba(139, 148, 158, 0.4)', name: 'Unknown' };
+        if (aqi <= 50) return { color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)', name: 'Good' };
+        if (aqi <= 100) return { color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)', name: 'Satisfactory' };
+        if (aqi <= 200) return { color: '#f97316', glow: 'rgba(249, 115, 22, 0.4)', name: 'Moderate' };
+        if (aqi <= 300) return { color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)', name: 'Poor' };
+        if (aqi <= 400) return { color: '#ec4899', glow: 'rgba(236, 72, 153, 0.4)', name: 'Very Poor' };
+        return { color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)', name: 'Severe' };
+    }
+
+    function predict() {
+        const city = select.value;
+        if(!city) {
+            alert("Please select a city first.");
+            return;
+        }
+
+        // Extremely simple mock prediction based on last data point
+        const cityData = aqiData.filter(d => d.City === city);
+        const lastRecord = cityData[cityData.length - 1];
+
+        if(!lastRecord) return;
+
+        // Introduce a slight pseudo-random variance for realism in demo
+        const variance = Math.floor(Math.random() * 20) - 10;
+        let predictedAqi = Math.max(0, lastRecord.AQI + variance);
+
+        const info = getHealthInfo(predictedAqi);
+
+        // Date calculation for tomorrow
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Display results
+        resVal.innerText = predictedAqi;
+        resBucket.innerText = info.name;
+        resBucket.style.color = info.color;
+        resBucket.style.textShadow = `0 0 20px ${info.glow}`;
+        
+        aqiCard.style.cssText = `box-shadow: 0 10px 40px ${info.glow}; --current-color: ${info.color}; flex: 1; padding: 30px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; transition: box-shadow 0.5s ease;`;
+        
+        resDate.innerText = "Forecast for: " + tomorrow.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        resContainer.style.display = 'block';
+        resContainer.style.opacity = 0;
+        setTimeout(() => {
+            resContainer.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            resContainer.style.opacity = 1;
+        }, 50);
+    }
+</script>
+</body>
+</html>

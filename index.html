@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepAQI | Advanced Air Quality Intelligence</title>
+    <script src="data.js"></script> 
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<nav>
+    <div class="brand">
+        <i class="fa-solid fa-earth-americas"></i>
+        DeepAQI
+    </div>
+    <div class="nav-links">
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="insights.html">Insights</a>
+        <a href="prediction.html">Advanced Predictions</a>
+        <a href="precaution.html">Precautions</a>
+        <a href="realtime.html">Live Status</a>
+    </div>
+</nav>
+
+<div class="dashboard">
+    <!-- Main Content -->
+    <div class="panel">
+        <h2 class="panel-title"><i class="fa-solid fa-chart-line"></i> Global Air Quality Monitor</h2>
+        
+        <div class="search-controls">
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" id="citySearch" placeholder="Search City..." autocomplete="off" onclick="toggleDropdown()" oninput="filterDropdown()">
+                <ul id="cityMenu" class="dropdown-list"></ul>
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-regular fa-calendar"></i>
+                <input type="date" id="dateSearch">
+            </div>
+
+            <button class="btn-primary" onclick="updateView()">
+                <i class="fas fa-search"></i> Render Data
+            </button>
+        </div>
+
+        <div id="result">
+            <div class="skeleton-loader">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <p>Select a city and date to fetch telemetry data.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info Context (Referring to the advanced code files) -->
+    <div class="panel">
+        <h2 class="panel-title"><i class="fa-solid fa-microchip"></i> Integrated Deep Learning</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+            Our intelligent prediction pipeline utilizes multiple advanced neural network architectures internally for high-accuracy forecasting across sources.
+        </p>
+        
+        <ul class="sidebar-list">
+            <li class="sidebar-item" title="Model Ref: Multi_source_city_Attention_LSTM">
+                <div class="sidebar-icon"><i class="fa-solid fa-brain"></i></div>
+                <div class="sidebar-text">
+                    <h4>Attention LSTM</h4>
+                    <p>Captures long-term temporal dependencies with spatial attention mechanics.</p>
+                </div>
+            </li>
+            <li class="sidebar-item" title="Model Ref: Multi_source_city_DANN">
+                <div class="sidebar-icon"><i class="fa-solid fa-network-wired"></i></div>
+                <div class="sidebar-text">
+                    <h4>DANN Architecture</h4>
+                    <p>Domain Adversarial Neural Networks optimized for cross-city feature adaptation.</p>
+                </div>
+            </li>
+            <li class="sidebar-item" title="Model Ref: Multi_source_city_TCN">
+                <div class="sidebar-icon"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="sidebar-text">
+                    <h4>TCN Model</h4>
+                    <p>Temporal Convolutional Networks providing causal convolutions for sequences.</p>
+                </div>
+            </li>
+            <li class="sidebar-item" title="Model Ref: Multi_source_city_GRU">
+                <div class="sidebar-icon"><i class="fa-solid fa-wave-square"></i></div>
+                <div class="sidebar-text">
+                    <h4>GRU & Attention</h4>
+                    <p>Gated Recurrent Units deployed for efficient structural forecasting and speed.</p>
+                </div>
+            </li>
+        </ul>
+        
+        <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--card-border);">
+            <h4 style="font-size: 14px; margin-bottom: 10px;">Ensemble Performance Metric</h4>
+            <div style="background: rgba(48,54,61,0.3); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, var(--accent-purple), var(--accent-glow)); width: 94%; height: 100%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+                <span>Similarity Metric Optimization</span>
+                <span style="color: var(--text-main); font-weight: bold;">0.942 / 1.0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize cities
+    const cities = typeof aqiData !== 'undefined' ? [...new Set(aqiData.map(d => d.City))].sort() : [];
+    const cityInput = document.getElementById('citySearch');
+    const dateInput = document.getElementById('dateSearch');
+    const menu = document.getElementById('cityMenu');
+
+    function buildMenu(filter = '') {
+        menu.innerHTML = '';
+        const filtered = cities.filter(c => c.toLowerCase().includes(filter.toLowerCase()));
+        if(filtered.length === 0) {
+            menu.innerHTML = `<li style="color:var(--text-muted); text-align:center;">No cities found</li>`;
+            return;
+        }
+        filtered.forEach(city => {
+            const li = document.createElement('li');
+            li.innerHTML = `<i class="fa-solid fa-map-pin" style="margin-right: 8px; font-size: 12px; opacity: 0.7;"></i> ${city}`;
+            li.onclick = () => selectCity(city);
+            menu.appendChild(li);
+        });
+    }
+
+    function toggleDropdown() { menu.style.display = (menu.style.display === 'block') ? 'none' : 'block'; buildMenu(cityInput.value); }
+    function filterDropdown() { menu.style.display = 'block'; buildMenu(cityInput.value); }
+    function selectCity(name) { cityInput.value = name; menu.style.display = 'none'; }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-group')) {
+            menu.style.display = 'none';
+        }
+    });
+
+    function getAqiConfig(aqi) {
+        if (!aqi) return { color: '#8b949e', label: 'Unknown', glow: 'rgba(139, 148, 158, 0.1)' };
+        if (aqi <= 50) return { color: '#10b981', label: 'Good', glow: 'rgba(16, 185, 129, 0.4)' };     
+        if (aqi <= 100) return { color: '#f59e0b', label: 'Satisfactory', glow: 'rgba(245, 158, 11, 0.4)' }; 
+        if (aqi <= 200) return { color: '#f97316', label: 'Moderate', glow: 'rgba(249, 115, 22, 0.4)' };  
+        if (aqi <= 300) return { color: '#ef4444', label: 'Poor', glow: 'rgba(239, 68, 68, 0.4)' };       
+        if (aqi <= 400) return { color: '#ec4899', label: 'Very Poor', glow: 'rgba(236, 72, 153, 0.4)' }; 
+        return { color: '#8b5cf6', label: 'Severe', glow: 'rgba(139, 92, 246, 0.4)' };                   
+    }
+
+    function renderPollutant(name, fullname, icon, val) {
+        return `
+            <div class="pollutant-card">
+                <i class="${icon}"></i>
+                <div class="p-name">${name}</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">${fullname}</div>
+                <div class="p-value">${val || '--'}</div>
+            </div>
+        `;
+    }
+
+    function displayData(cityName, targetDate) {
+        if(typeof aqiData === 'undefined') {
+            alert('aqiData not loaded properly.');
+            return;
+        }
+        
+        const resultDiv = document.getElementById('result');
+        const cityData = aqiData.filter(d => d.City === cityName);
+        let record;
+        
+        if (targetDate) {
+            record = cityData.find(d => d.Date === targetDate);
+        } else {
+            record = cityData[cityData.length - 1]; // Latest available date
+        }
+
+        if (!record) {
+            resultDiv.innerHTML = `
+                <div style="text-align: center; color: #ef4444; padding: 50px 20px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 40px; margin-bottom: 15px;"></i>
+                    <h3>Data Not Available</h3>
+                    <p style="font-size: 14px; margin-top: 8px; color: var(--text-muted);">We couldn't find any readings for ${cityName} on the requested date.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const config = getAqiConfig(record.AQI);
+        let displayDate = 'Unknown Date';
+        if(record.Date) {
+            displayDate = new Date(record.Date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        resultDiv.style.opacity = 0;
+        
+        setTimeout(() => {
+            resultDiv.innerHTML = `
+                <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="font-size: 32px; font-family: 'Outfit', sans-serif; font-weight: 700; margin-bottom: 5px;">${cityName}</h2>
+                        <div style="color: var(--text-muted); font-size: 14px;">
+                            <i class="fa-regular fa-calendar" style="margin-right: 5px;"></i> ${displayDate}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aqi-hero">
+                    <div class="aqi-main-card" style="box-shadow: 0 10px 40px ${config.glow}; --current-color: ${config.color};">
+                        <div class="aqi-value-wrapper">
+                            <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600;">Air Quality Index</div>
+                            <div class="aqi-value">${record.AQI || '--'}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 15px; color: var(--text-muted); margin-bottom: 5px;">Analysis Category</div>
+                            <div style="font-size: 28px; font-weight: 700; color: ${config.color}; text-shadow: 0 0 20px ${config.glow};">${record['AQI Bucket'] || config.label}</div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-top: 12px; max-width: 220px; line-height: 1.5;">
+                                Value indicates the composite multi-source pollution level affecting this region.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 18px; margin-bottom: 25px; font-weight: 600;display: flex;align-items: center;gap: 10px;">
+                    <i class="fa-solid fa-flask" style="color: var(--accent-purple);"></i> Pollutant Concentrates
+                </h3>
+                
+                <div class="pollutant-grid">
+                    ${renderPollutant('PM 2.5', 'Particulate Matter <2.5', 'fa-solid fa-droplet', record['PM2.5'])}
+                    ${renderPollutant('PM 10', 'Particulate Matter <10', 'fa-solid fa-cloud', record.PM10)}
+                    ${renderPollutant('NO2', 'Nitrogen Dioxide', 'fa-solid fa-smog', record.NO2)}
+                    ${renderPollutant('O3', 'Ozone Ground Level', 'fa-solid fa-sun', record.O3)}
+                    ${renderPollutant('CO', 'Carbon Monoxide', 'fa-solid fa-car', record.CO)}
+                    ${renderPollutant('SO2', 'Sulphur Dioxide', 'fa-solid fa-industry', record.SO2)}
+                </div>
+            `;
+            
+            resultDiv.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            resultDiv.style.opacity = 1;
+        }, 150);
+    }
+
+    function updateView() {
+        const cityName = cityInput.value;
+        const targetDate = dateInput.value;
+        if (!cityName) {
+            alert("Please select a target city for analysis.");
+            return;
+        }
+        displayData(cityName, targetDate);
+    }
+    
+    // Setup Page
+    buildMenu();
+</script>
+
+</body>
+</html>

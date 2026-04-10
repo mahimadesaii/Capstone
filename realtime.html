@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Data | DeepAQI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <style>
+        .loader-spinner {
+            border: 4px solid var(--card-border);
+            border-top: 4px solid var(--accent-glow);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #dataSection {
+            display: none;
+        }
+
+        .api-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            margin-left: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="brand">
+        <i class="fa-solid fa-earth-americas"></i>
+        DeepAQI
+    </div>
+    <div class="nav-links">
+        <a href="index.html">Dashboard</a>
+        <a href="insights.html">Insights</a>
+        <a href="prediction.html">Advanced Predictions</a>
+        <a href="precaution.html">Precautions</a>
+        <a href="realtime.html" class="active">Live Status</a>
+    </div>
+</nav>
+
+<div class="dashboard single">
+    <div class="panel">
+        <h2 class="panel-title">
+            <i class="fa-solid fa-satellite-dish"></i> Live Sensor Telemetry 
+            <span class="api-badge"><i class="fa-solid fa-cloud-arrow-down"></i> API Connected</span>
+        </h2>
+        <p style="color: var(--text-muted); margin-bottom: 25px;">Direct stream from data.gov.in monitoring stations across the nation.</p>
+        
+        <div id="loading" class="skeleton-loader" style="height: 150px;">
+            <div class="loader-spinner"></div>
+            <p>Fetching real-time records from National API...</p>
+        </div>
+
+        <div id="dataSection">
+            <div class="search-controls">
+                <div class="input-group">
+                    <i class="fa-solid fa-map-location"></i>
+                    <select id="stateSelect" style="padding-left: 45px;">
+                        <option value="">-- Select State --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-city"></i>
+                    <select id="citySelect" style="padding-left: 45px;">
+                        <option value="">-- Select City --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-tower-broadcast"></i>
+                    <select id="stationSelect" style="padding-left: 45px;">
+                        <option value="">-- Select Monitoring Station --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="resContainer" style="display: none; margin-top: 30px;">
+                <div class="aqi-hero">
+                    <div id="aqiCard" class="aqi-main-card">
+                        <div class="aqi-value-wrapper">
+                            <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600;">Composite AQI (Max)</div>
+                            <div id="resVal" class="aqi-value">--</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 15px; color: var(--text-muted); margin-bottom: 5px;">Live Health Category</div>
+                            <div id="resBucket" style="font-size: 28px; font-weight: 700;">--</div>
+                            <div id="resDate" style="font-size: 13px; color: var(--text-muted); margin-top: 12px; line-height: 1.5;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 18px; margin-bottom: 25px; margin-top: 25px; font-weight: 600;display: flex;align-items: center;gap: 10px;">
+                    <i class="fa-solid fa-flask" style="color: var(--accent-purple);"></i> Live Pollutant Sensor Data
+                </h3>
+                <div id="pollutantGrid" class="pollutant-grid">
+                    <!-- Dynamic Readouts here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "579b464db66ec23bdd000001ea6875bc31f54213769b35620ca08363";
+    const RESOURCE_ID = "3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69";
+    const API_URL = `https://api.data.gov.in/resource/${RESOURCE_ID}?api-key=${API_KEY}&format=json&limit=1000`;
+
+    // References
+    const loader = document.getElementById('loading');
+    const dataSection = document.getElementById('dataSection');
+    const stateSelect = document.getElementById('stateSelect');
+    const citySelect = document.getElementById('citySelect');
+    const stationSelect = document.getElementById('stationSelect');
+    const resContainer = document.getElementById('resContainer');
+    const aqiCard = document.getElementById('aqiCard');
+    const pollutantGrid = document.getElementById('pollutantGrid');
+
+    let allRecords = [];
+    let stateMap = {}; // State -> City -> Station -> Pollutants array
+
+    // Pollutant Metdata mapping
+    const pMeta = {
+        'PM2.5': { icon: 'fa-solid fa-droplet', name: 'Particulate Matter <2.5' },
+        'PM10': { icon: 'fa-solid fa-cloud', name: 'Particulate Matter <10' },
+        'NO2': { icon: 'fa-solid fa-smog', name: 'Nitrogen Dioxide' },
+        'OZONE': { icon: 'fa-solid fa-sun', name: 'Ozone Ground Level' },
+        'CO': { icon: 'fa-solid fa-car', name: 'Carbon Monoxide' },
+        'SO2': { icon: 'fa-solid fa-industry', name: 'Sulphur Dioxide' },
+        'NH3': { icon: 'fa-solid fa-flask', name: 'Ammonia' }
+    };
+
+    function getHealthInfo(aqi) {
+        if (!aqi || isNaN(aqi)) return { color: '#8b949e', glow: 'rgba(139, 148, 158, 0.4)', name: 'Unknown' };
+        if (aqi <= 50) return { color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)', name: 'Good' };
+        if (aqi <= 100) return { color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)', name: 'Satisfactory' };
+        if (aqi <= 200) return { color: '#f97316', glow: 'rgba(249, 115, 22, 0.4)', name: 'Moderate' };
+        if (aqi <= 300) return { color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)', name: 'Poor' };
+        if (aqi <= 400) return { color: '#ec4899', glow: 'rgba(236, 72, 153, 0.4)', name: 'Very Poor' };
+        return { color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)', name: 'Severe' };
+    }
+
+    async function initAPI() {
+        try {
+            const resp = await fetch(API_URL);
+            const data = await resp.json();
+            
+            if(data && data.records) {
+                allRecords = data.records;
+                processHierarchicalData();
+            } else {
+                throw new Error("Invalid API Response");
+            }
+        } catch (err) {
+            console.error(err);
+            loader.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="font-size:40px; color:#ef4444;"></i><p>Failed to load data API. Check network.</p>`;
+        }
+    }
+
+    function processHierarchicalData() {
+        // Group by State > City > Station
+        allRecords.forEach(r => {
+            const st = r.state || "Unknown";
+            const ci = r.city || "Unknown";
+            const sta = r.station || "Unknown";
+
+            if(!stateMap[st]) stateMap[st] = {};
+            if(!stateMap[st][ci]) stateMap[st][ci] = {};
+            if(!stateMap[st][ci][sta]) stateMap[st][ci][sta] = [];
+
+            stateMap[st][ci][sta].push(r);
+        });
+
+        // Hide Loader, Show Section
+        loader.style.display = 'none';
+        dataSection.style.display = 'block';
+
+        // Load States
+        const states = Object.keys(stateMap).sort();
+        states.forEach(s => {
+            let opt = document.createElement('option');
+            opt.value = opt.innerText = s;
+            stateSelect.appendChild(opt);
+        });
+    }
+
+    stateSelect.addEventListener('change', () => {
+        citySelect.innerHTML = '<option value="">-- Select City --</option>';
+        stationSelect.innerHTML = '<option value="">-- Select Monitoring Station --</option>';
+        resContainer.style.display = 'none';
+        
+        const state = stateSelect.value;
+        if(state && stateMap[state]) {
+            const cities = Object.keys(stateMap[state]).sort();
+            cities.forEach(c => {
+                let opt = document.createElement('option');
+                opt.value = opt.innerText = c;
+                citySelect.appendChild(opt);
+            });
+        }
+    });
+
+    citySelect.addEventListener('change', () => {
+        stationSelect.innerHTML = '<option value="">-- Select Monitoring Station --</option>';
+        resContainer.style.display = 'none';
+
+        const state = stateSelect.value;
+        const city = citySelect.value;
+        
+        if(state && city && stateMap[state][city]) {
+            const stations = Object.keys(stateMap[state][city]).sort();
+            stations.forEach(s => {
+                let opt = document.createElement('option');
+                opt.value = opt.innerText = s;
+                stationSelect.appendChild(opt);
+            });
+        }
+    });
+
+    stationSelect.addEventListener('change', () => {
+        const state = stateSelect.value;
+        const city = citySelect.value;
+        const station = stationSelect.value;
+
+        if(!state || !city || !station) {
+            resContainer.style.display = 'none';
+            return;
+        }
+
+        const stationData = stateMap[state][city][station];
+        renderStationData(stationData);
+    });
+
+    function renderStationData(records) {
+        // Calculate max AQI (from avg_value) to represent overall category
+        let maxAqi = 0;
+        let lastUpdate = "Unknown Time";
+        let gridHtml = '';
+
+        records.forEach(r => {
+            const val = parseInt(r.avg_value);
+            if(!isNaN(val) && val > maxAqi) maxAqi = val;
+            if(r.last_update) lastUpdate = r.last_update;
+
+            const pId = r.pollutant_id;
+            const meta = pMeta[pId] || { icon: 'fa-solid fa-smog', name: 'Other Pollutant' };
+
+            gridHtml += `
+            <div class="pollutant-card">
+                <i class="${meta.icon}"></i>
+                <div class="p-name">${pId}</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">${meta.name}</div>
+                <div class="p-value">${val || 'NA'}</div>
+                <div style="font-size:10px; opacity:0.6; margin-top:5px;">Min: ${r.min_value || '-'} | Max: ${r.max_value || '-'}</div>
+            </div>`;
+        });
+
+        const info = getHealthInfo(maxAqi);
+
+        document.getElementById('resVal').innerText = maxAqi;
+        document.getElementById('resBucket').innerText = info.name;
+        document.getElementById('resBucket').style.color = info.color;
+        document.getElementById('resBucket').style.textShadow = `0 0 20px ${info.glow}`;
+        document.getElementById('resDate').innerHTML = `<i class="fa-solid fa-clock"></i> Synced: ${lastUpdate}`;
+        
+        aqiCard.style.cssText = `box-shadow: 0 10px 40px ${info.glow}; --current-color: ${info.color}; flex: 1; padding: 30px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden;`;
+        
+        pollutantGrid.innerHTML = gridHtml;
+
+        resContainer.style.display = 'block';
+        resContainer.animate([{opacity: 0}, {opacity: 1}], {duration: 500, fill: 'forwards'});
+    }
+
+    // Launch
+    initAPI();
+
+</script>
+</body>
+</html>
